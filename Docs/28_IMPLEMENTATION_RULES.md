@@ -21,28 +21,38 @@ Before implementing anything, read all project documentation.
 At minimum:
 
 ```text
-00_PROJECT_BRIEF.md
-01_PRODUCT_REQUIREMENTS.md
-02_BRAND_IDENTITY.md
-03_INFORMATION_ARCHITECTURE.md
-04_PAGE_SPECIFICATIONS.md
-06_CONTENT_MODEL.md
-09_INTERNATIONALIZATION.md
-10_3D_AND_INTERACTIONS.md
-11_MEDIA_AND_GALLERY.md
-12_SEO.md
-13_PERFORMANCE.md
-14_ACCESSIBILITY.md
-15_SECURITY.md
-16_RESPONSIVE_DESIGN.md
-17_COMPONENT_ARCHITECTURE.md
-18_API_AND_SERVER_ARCHITECTURE.md
-19_DEPLOYMENT.md
-20_CONTENT_GUIDELINES.md
-21_IMPLEMENTATION_RULES.md
+00_PROJECT_OVERVIEW.md
++01_PRODUCT_VISION.md
++02_BRAND_AND_VISUAL_DIRECTIONS.md
++05_DATABASE_SCHEMA.md
++06_ADMIN_PANEL.md
++07_PUBLIC_WEBSITE.md
++09_TECHNICAL_ARCHITECTURE.md      # canonical — supersedes 04_TECHNICAL_ARCHITECTURE.md
++10_INFORMATION_ARCHITECTURE.md    # canonical — supersedes 03_INFORMATION_ARCHITECTURE.md
++11_DESIGN_SYSTEM.md               # canonical — supersedes 08_DESIGN_SYSTEM.md
++12_CONTENT_SYSTEM.md
++14_PAGE_SPECIFICATIONS.md
++15_CONTENT_MODEL.md
++16_INTERNATIONALIZATION.md
++17_3D_AND_INTERACTIONS.md
++18_MEDIA_AND_GALLERY.md
++19_SEO.md
++20_PERFORMANCE.md
++21_ACCESSIBILITY.md
++22_SECURITY.md
++23_RESPONSIVE_DESIGN.md
++24_COMPONENT_ARCHITECTURE.md
++25_API_AND_SERVER_ARCHITECTURE.md
++26_CONTENT_GUIDELINES.md
++27_DEPLOYMENT.md
 ```
 
-If an implementation decision conflicts with these documents, the documentation takes precedence unless the requirement is technically impossible.
+If an implementation decision conflicts with these documents, the
+documentation takes precedence unless the requirement is technically
+impossible. Where two documents conflict with each other (this repo
+currently has known duplicate/conflicting pairs for technical architecture,
+information architecture, and design system), follow the precedence rules
+in `00_AI_AGENT_START_HERE.md` §3 rather than guessing.
 
 ---
 
