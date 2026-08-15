@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -93,73 +94,85 @@ export function MobileMenu({
         </svg>
       </button>
 
-      {open && (
-        <div
-          id="mobile-menu-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu"
-          ref={panelRef}
-          className="fixed inset-0 z-50 flex flex-col bg-bg"
-        >
-          <div className="flex items-center justify-between border-b border-border px-md py-4">
-            <span className="font-mono text-sm font-semibold tracking-widest text-text-primary">
-              IUST ROBOTICS
-            </span>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close menu"
-              className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-text-primary"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-
-          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-md py-6">
-            {links.map((link, i) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                ref={i === 0 ? firstLinkRef : undefined}
+      {open &&
+        createPortal(
+          <div
+            id="mobile-menu-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            ref={panelRef}
+            className="fixed inset-0 z-[100] flex flex-col bg-bg"
+          >
+            <div className="flex items-center justify-between border-b border-border px-md py-4">
+              <span className="font-mono text-sm font-semibold tracking-widest text-text-primary">
+                IUST ROBOTICS
+              </span>
+              <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-3.5 text-lg font-medium text-text-primary hover:bg-surface"
+                aria-label="Close menu"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-border text-text-primary"
               >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="border-t border-border px-md py-5">
-            <LinkButton href="/join" variant="primary" onClick={() => setOpen(false)} className="w-full">
-              {joinLabel}
-            </LinkButton>
-
-            <div className="mt-4 flex items-center justify-between">
-              <ThemeToggle theme={theme} />
-              <LanguageSwitcher locale={locale} />
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
 
-            {socialLinks.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-4">
-                {socialLinks.map((s) => (
-                  <a
-                    key={s.id}
-                    href={s.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-text-secondary hover:text-text-primary"
+            <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-md py-6">
+              {links.map((link, i) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  ref={i === 0 ? firstLinkRef : undefined}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between rounded-md border border-border px-4 py-3.5 text-lg font-medium text-text-primary transition hover:border-accent hover:bg-surface"
+                >
+                  {link.label}
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                    className="shrink-0 text-text-faint"
                   >
-                    {s.platform.charAt(0) + s.platform.slice(1).toLowerCase()}
-                  </a>
-                ))}
+                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Link>
+              ))}
+            </nav>
+
+            <div className="border-t border-border px-md py-5">
+              <LinkButton href="/join" variant="primary" onClick={() => setOpen(false)} className="w-full">
+                {joinLabel}
+              </LinkButton>
+
+              <div className="mt-4 flex items-center justify-between">
+                <ThemeToggle theme={theme} />
+                <LanguageSwitcher locale={locale} />
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {socialLinks.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-4">
+                  {socialLinks.map((s) => (
+                    <a
+                      key={s.id}
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-text-secondary hover:text-text-primary"
+                    >
+                      {s.platform.charAt(0) + s.platform.slice(1).toLowerCase()}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
