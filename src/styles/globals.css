@@ -86,6 +86,23 @@ body {
   outline-offset: 2px;
 }
 
+/* CircuitBackground: a single "powered" via pulses gently to suggest an
+ * active board rather than a static print. Kept slow and low-amplitude
+ * per §64 motion philosophy; disabled entirely under reduced-motion below. */
+@keyframes circuit-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.circuit-pulse {
+  animation: circuit-pulse 3.2s ease-in-out infinite;
+}
+
 /* §66: staggered/scroll animation helper, kept subtle per §64 motion philosophy */
 @media (prefers-reduced-motion: reduce) {
   *,
