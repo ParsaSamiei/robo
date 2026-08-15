@@ -1,0 +1,868 @@
+// Prisma schema for IUST Robotics
+// Source of truth: Docs/05_DATABASE_SCHEMA.md (entities, relationships, enums)
+// and Docs/09_TECHNICAL_ARCHITECTURE.md (stack conventions: cuid, Postgres).
+//
+// Deviations from the doc's illustrative snippets (needed to make a valid
+// Prisma schema) are noted inline with `// impl:` comments.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Shared enums (05 §4, §5, §14, §18, §26/44/46, §49)
+// ---------------------------------------------------------------------------
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MembershipStatus {
+  CURRENT
+  ALUMNI
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum RobotStatus {
+  CONCEPT
+  PROTOTYPE
+  DEVELOPMENT
+  OPERATIONAL
+  RETIRED
+}
+
+enum ContactStatus {
+  NEW
+  REVIEWED
+  ARCHIVED
+}
+
+enum ApplicationStatus {
+  NEW
+  REVIEWING
+  ACCEPTED
+  REJECTED
+  ARCHIVED
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  LINKEDIN
+  YOUTUBE
+  GITHUB
+  TELEGRAM
+}
+
+// impl: admin roles are not in the doc's entity list (06 §3 explicitly scopes
+// initial auth to a single username/password admin) but 06 §3 also says the
+// architecture "should nevertheless be designed so that multiple admin roles
+// can be introduced later." A role enum on Admin is the minimal way to do
+// that without over-building now.
+enum AdminRole {
+  SUPER_ADMIN
+  EDITOR
+}
+
+// ---------------------------------------------------------------------------
+// Admin (06 §3-4: username/password, hashed, sessions)
+// ---------------------------------------------------------------------------
+
+model Admin {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  role         AdminRole @default(EDITOR)
+  lastLoginAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Department (05 §6)
+// ---------------------------------------------------------------------------
+
+model Department {
+  id            String  @id @default(cuid())
+  nameEn        String
+  nameFa        String
+  slug          String  @unique
+  descriptionEn String?
+  descriptionFa String?
+  order         Int     @default(0)
+  isActive      Boolean @default(true)
+
+  members      MemberDepartment[]
+  applications JoinApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Member (05 §7-10)
+// ---------------------------------------------------------------------------
+
+model Member {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  roleEn String?
+  roleFa String?
+
+  bioEn String?
+  bioFa String?
+
+  educationEn String?
+  educationFa String?
+
+  photoId String? @unique
+  photo   Media?  @relation("MemberPhoto", fields: [photoId], references: [id], onDelete: SetNull)
+
+  githubUrl          String?
+  personalWebsiteUrl String?
+
+  joinedAt DateTime?
+  leftAt   DateTime?
+
+  membershipStatus MembershipStatus @default(CURRENT)
+  isPublished      Boolean          @default(false)
+
+  // impl: 05 §51 says content types benefit from custom SEO fields; Member
+  // is public-facing (05 §59 "Team" query pattern) so it gets the standard set.
+  seoTitleEn       String?
+  seoTitleFa       String?
+  seoDescriptionEn String?
+  seoDescriptionFa String?
+
+  departments   MemberDepartment[]
+  technologies  MemberTechnology[]
+  projects      ProjectMember[]
+  robots        RobotMember[]
+  authoredPosts BlogPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([membershipStatus])
+  @@index([isPublished])
+}
+
+model MemberDepartment {
+  memberId     String
+  departmentId String
+
+  member     Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, departmentId])
+}
+
+model MemberTechnology {
+  memberId     String
+  technologyId String
+
+  member     Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, technologyId])
+}
+
+// ---------------------------------------------------------------------------
+// Technology (05 §11-12)
+// ---------------------------------------------------------------------------
+
+model Technology {
+  id String @id @default(cuid())
+
+  name String
+  slug String @unique
+
+  descriptionEn String?
+  descriptionFa String?
+
+  category   String?
+  websiteUrl String?
+  icon       String?
+
+  isPublished Boolean @default(false)
+  order       Int     @default(0)
+
+  members  MemberTechnology[]
+  projects ProjectTechnology[]
+  robots   RobotTechnology[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isPublished])
+}
+
+// ---------------------------------------------------------------------------
+// Project (05 §13-16)
+// ---------------------------------------------------------------------------
+
+model Project {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+  slug    String @unique
+
+  excerptEn String?
+  excerptFa String?
+  contentEn String?
+  contentFa String?
+
+  status ProjectStatus @default(ACTIVE)
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  publishedAt       DateTime?
+
+  githubUrl String?
+
+  seoTitleEn       String?
+  seoTitleFa       String?
+  seoDescriptionEn String?
+  seoDescriptionFa String?
+  ogImageId        String?  @unique
+  ogImage          Media?  @relation("ProjectOgImage", fields: [ogImageId], references: [id], onDelete: SetNull)
+
+  members      ProjectMember[]
+  technologies ProjectTechnology[]
+  robots       RobotProject[]
+  competitions CompetitionProject[]
+  media        ProjectMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([publicationStatus])
+  @@index([status])
+}
+
+model ProjectMember {
+  projectId String
+  memberId  String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  roleEn String?
+  roleFa String?
+
+  @@id([projectId, memberId])
+}
+
+model ProjectTechnology {
+  projectId    String
+  technologyId String
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, technologyId])
+}
+
+// ---------------------------------------------------------------------------
+// Robot (05 §17-21)
+// ---------------------------------------------------------------------------
+
+model Robot {
+  id String @id @default(cuid())
+
+  nameEn String
+  nameFa String?
+  slug   String @unique
+
+  descriptionEn String?
+  descriptionFa String?
+  contentEn     String?
+  contentFa     String?
+
+  status RobotStatus @default(DEVELOPMENT)
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  publishedAt       DateTime?
+
+  seoTitleEn       String?
+  seoTitleFa       String?
+  seoDescriptionEn String?
+  seoDescriptionFa String?
+
+  members      RobotMember[]
+  projects     RobotProject[]
+  technologies RobotTechnology[]
+  competitions CompetitionRobot[]
+  media        RobotMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([publicationStatus])
+  @@index([status])
+}
+
+model RobotMember {
+  robotId  String
+  memberId String
+
+  robot  Robot  @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  roleEn String?
+  roleFa String?
+
+  @@id([robotId, memberId])
+}
+
+model RobotProject {
+  robotId   String
+  projectId String
+
+  robot   Robot   @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([robotId, projectId])
+}
+
+model RobotTechnology {
+  robotId      String
+  technologyId String
+
+  robot      Robot      @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([robotId, technologyId])
+}
+
+// ---------------------------------------------------------------------------
+// Competition (05 §22-27)
+// ---------------------------------------------------------------------------
+
+model Competition {
+  id String @id @default(cuid())
+
+  nameEn String
+  nameFa String?
+  slug   String @unique
+
+  organizationEn String?
+  organizationFa String?
+  leagueEn       String?
+  leagueFa       String?
+
+  year Int?
+
+  descriptionEn String?
+  descriptionFa String?
+  contentEn     String?
+  contentFa     String?
+
+  locationEn String?
+  locationFa String?
+  websiteUrl String?
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  publishedAt       DateTime?
+
+  robots   CompetitionRobot[]
+  projects CompetitionProject[]
+  results  CompetitionResult[]
+  awards   Award[]
+  media    CompetitionMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([publicationStatus])
+  @@index([year])
+}
+
+model CompetitionRobot {
+  competitionId String
+  robotId       String
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  robot       Robot       @relation(fields: [robotId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, robotId])
+}
+
+model CompetitionProject {
+  competitionId String
+  projectId     String
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, projectId])
+}
+
+model CompetitionResult {
+  id String @id @default(cuid())
+
+  competitionId String
+
+  titleEn String?
+  titleFa String?
+
+  placement Int?
+  score     String?
+  stage     String?
+
+  descriptionEn String?
+  descriptionFa String?
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Award {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+
+  descriptionEn String?
+  descriptionFa String?
+
+  year Int?
+
+  competitionId String?
+  competition   Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+
+  isPublished Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPublished])
+}
+
+// ---------------------------------------------------------------------------
+// Blog / News (05 §29-30)
+// ---------------------------------------------------------------------------
+
+model BlogPost {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+  slug    String @unique
+
+  excerptEn String?
+  excerptFa String?
+  contentEn String?
+  contentFa String?
+
+  authorId     String?
+  coverMediaId String? @unique
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  publishedAt       DateTime?
+
+  seoTitleEn       String?
+  seoTitleFa       String?
+  seoDescriptionEn String?
+  seoDescriptionFa String?
+
+  author     Member? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  coverMedia Media?  @relation("BlogCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  tags BlogPostTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([publicationStatus])
+}
+
+model NewsPost {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+  slug    String @unique
+
+  excerptEn String?
+  excerptFa String?
+  contentEn String?
+  contentFa String?
+
+  coverMediaId String? @unique
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  publishedAt       DateTime?
+
+  coverMedia Media? @relation("NewsCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([publicationStatus])
+}
+
+model Tag {
+  id String @id @default(cuid())
+
+  nameEn String
+  nameFa String?
+  slug   String @unique
+
+  posts BlogPostTag[]
+}
+
+model BlogPostTag {
+  postId String
+  tagId  String
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+// ---------------------------------------------------------------------------
+// Media (05 §31-37)
+// ---------------------------------------------------------------------------
+
+model Media {
+  id String @id @default(cuid())
+
+  filename         String
+  originalFilename String?
+
+  mimeType String
+  size     Int
+
+  width  Int?
+  height Int?
+
+  storagePath String
+
+  // impl: 25_API_AND_SERVER_ARCHITECTURE.md §21 "Image Variants" -- thumbnail/
+  // medium/large generated once at upload time (§22), not re-processed per
+  // request. Nullable because non-image media (future use) or pre-pipeline
+  // seed data may not have variants.
+  thumbnailPath String?
+  mediumPath    String?
+  largePath     String?
+
+  altTextEn String?
+  altTextFa String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberPhoto       Member?           @relation("MemberPhoto")
+  projectOg         Project?          @relation("ProjectOgImage")
+  blogCover         BlogPost?         @relation("BlogCover")
+  newsCover         NewsPost?         @relation("NewsCover")
+  sponsorLogo       Sponsor[]         @relation("SponsorLogo")
+  partnerLogo       Partner[]         @relation("PartnerLogo")
+  timelineFor       TimelineEvent[]
+  galleryAlbumCover GalleryAlbum[]    @relation("GalleryAlbumCover")
+
+  projectMedia     ProjectMedia[]
+  robotMedia       RobotMedia[]
+  competitionMedia CompetitionMedia[]
+  galleryItems     GalleryItem[]
+}
+
+model ProjectMedia {
+  projectId String
+  mediaId   String
+  order     Int    @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, mediaId])
+}
+
+model RobotMedia {
+  robotId String
+  mediaId String
+  order   Int    @default(0)
+
+  robot Robot @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([robotId, mediaId])
+}
+
+model CompetitionMedia {
+  competitionId String
+  mediaId       String
+  order         Int    @default(0)
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  media       Media       @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, mediaId])
+}
+
+// ---------------------------------------------------------------------------
+// Gallery (05 §35-36)
+// ---------------------------------------------------------------------------
+
+model GalleryAlbum {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+  slug    String @unique
+
+  descriptionEn String?
+  descriptionFa String?
+
+  coverMediaId String?
+  cover        Media?  @relation("GalleryAlbumCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  order     Int     @default(0)
+  published Boolean @default(false)
+
+  items GalleryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GalleryItem {
+  id String @id @default(cuid())
+
+  albumId String
+  mediaId String
+
+  captionEn String?
+  captionFa String?
+
+  order Int @default(0)
+
+  album GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  media Media        @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Video (05 §37)
+// ---------------------------------------------------------------------------
+
+model Video {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+
+  youtubeUrl   String
+  thumbnailUrl String?
+
+  isPublished Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Sponsors / Partners (05 §38-41)
+// ---------------------------------------------------------------------------
+
+model SponsorTier {
+  id String @id @default(cuid())
+
+  nameEn String
+  nameFa String?
+
+  descriptionEn String?
+  descriptionFa String?
+
+  order Int @default(0)
+
+  sponsors Sponsor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sponsor {
+  id String @id @default(cuid())
+
+  name String
+  slug String @unique
+
+  descriptionEn String?
+  descriptionFa String?
+
+  websiteUrl String?
+
+  logoMediaId String?
+  tierId      String?
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  order             Int               @default(0)
+
+  logo Media?       @relation("SponsorLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  tier SponsorTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([publicationStatus])
+}
+
+model Partner {
+  id String @id @default(cuid())
+
+  name String
+  slug String @unique
+
+  descriptionEn String?
+  descriptionFa String?
+
+  websiteUrl String?
+
+  logoMediaId String?
+
+  publicationStatus PublicationStatus @default(DRAFT)
+  order             Int               @default(0)
+
+  logo Media? @relation("PartnerLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([publicationStatus])
+}
+
+// ---------------------------------------------------------------------------
+// Timeline (05 §42)
+// ---------------------------------------------------------------------------
+
+model TimelineEvent {
+  id String @id @default(cuid())
+
+  titleEn String
+  titleFa String?
+
+  descriptionEn String?
+  descriptionFa String?
+
+  date DateTime?
+
+  mediaId String?
+
+  isPublished Boolean @default(false)
+  order       Int     @default(0)
+
+  media Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Contact / Join (05 §43-47)
+// ---------------------------------------------------------------------------
+
+model ContactSubmission {
+  id String @id @default(cuid())
+
+  name    String
+  email   String
+  subject String?
+  message String
+
+  status ContactStatus @default(NEW)
+
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model JoinApplication {
+  id String @id @default(cuid())
+
+  name  String
+  email String
+
+  educationEn String?
+  educationFa String?
+
+  departmentId String?
+
+  messageEn String?
+  messageFa String?
+
+  githubUrl    String?
+  portfolioUrl String?
+
+  status ApplicationStatus @default(NEW)
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Social links / site settings (05 §48-51)
+// ---------------------------------------------------------------------------
+
+model SocialLink {
+  id String @id @default(cuid())
+
+  platform SocialPlatform
+  url      String
+
+  isEnabled Boolean @default(true)
+  order     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SiteSetting {
+  id String @id @default(cuid())
+
+  key   String @unique
+  value String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
