@@ -28,7 +28,31 @@ export function MediaPicker({
 }) {
   const [media, setMedia] = useState<MediaLike | null>(initialMedia ?? null);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleDelete() {
+    if (!media) return;
+    if (!confirm("Delete this image permanently? This can't be undone.")) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/media/${media.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // e.g. 409 -- still referenced elsewhere. Don't clear the field in
+        // that case, since the reference here is still live.
+        toast.error(data.error ?? "Couldn't delete this image.");
+        return;
+      }
+      setMedia(null);
+      toast.success("Image deleted.");
+    } catch {
+      toast.error("Couldn't delete this image.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleFile(file: File) {
     setUploading(true);
@@ -85,7 +109,7 @@ export function MediaPicker({
           />
           <button
             type="button"
-            disabled={uploading}
+            disabled={uploading || deleting}
             onClick={() => inputRef.current?.click()}
             className="rounded-md border border-[#27323d] px-3 py-1.5 text-xs font-medium text-[#e6edf3] hover:border-[#d7a84b] disabled:opacity-50"
           >
@@ -94,10 +118,11 @@ export function MediaPicker({
           {media && (
             <button
               type="button"
-              onClick={() => setMedia(null)}
-              className="text-xs text-[#7e8995] hover:text-red-400"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="text-xs text-[#7e8995] hover:text-red-400 disabled:opacity-50"
             >
-              Remove
+              {deleting ? "Deleting…" : "Delete image"}
             </button>
           )}
         </div>

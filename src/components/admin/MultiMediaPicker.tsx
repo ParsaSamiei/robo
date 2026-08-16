@@ -31,6 +31,7 @@ export function MultiMediaPicker({
 }) {
   const [items, setItems] = useState<MediaLike[]>(initialMedia);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFiles(files: FileList) {
@@ -53,8 +54,26 @@ export function MultiMediaPicker({
     }
   }
 
-  function remove(id: string) {
-    setItems((prev) => prev.filter((m) => m.id !== id));
+  async function remove(id: string) {
+    if (!confirm("Delete this image permanently? This can't be undone.")) return;
+
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/media/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // e.g. 409 -- still referenced elsewhere. Leave it in the list
+        // since the reference is still live.
+        toast.error(data.error ?? "Couldn't delete this image.");
+        return;
+      }
+      setItems((prev) => prev.filter((m) => m.id !== id));
+      toast.success("Image deleted.");
+    } catch {
+      toast.error("Couldn't delete this image.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -75,11 +94,12 @@ export function MultiMediaPicker({
             />
             <button
               type="button"
+              disabled={deletingId === m.id}
               onClick={() => remove(m.id)}
-              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white opacity-0 transition group-hover:opacity-100"
-              aria-label="Remove image"
+              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white opacity-0 transition hover:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+              aria-label="Delete image"
             >
-              ×
+              {deletingId === m.id ? "…" : "×"}
             </button>
           </div>
         ))}
