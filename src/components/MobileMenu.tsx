@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+// TODO: re-enable once translations are ready -- see Header.tsx for the
+// matching change.
+// import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LinkButton } from "@/components/Button";
 import type { Locale } from "@/lib/i18n";
@@ -151,7 +153,8 @@ export function MobileMenu({
 
               <div className="mt-4 flex items-center justify-between">
                 <ThemeToggle theme={theme} />
-                <LanguageSwitcher locale={locale} />
+                {/* TODO: re-enable once translations are ready */}
+                {/* <LanguageSwitcher locale={locale} /> */}
               </div>
 
               {socialLinks.length > 0 && (

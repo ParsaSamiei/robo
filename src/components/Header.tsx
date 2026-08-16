@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+// TODO: re-enable once translations are ready -- see MobileMenu.tsx for the
+// matching change.
+// import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LinkButton } from "@/components/Button";
 import { MobileMenu } from "@/components/MobileMenu";
@@ -48,7 +50,8 @@ export async function Header({ locale, theme }: { locale: Locale; theme: "dark" 
         <div className="flex items-center gap-3">
           <div className="hidden items-center gap-2 md:flex">
             <ThemeToggle theme={theme} />
-            <LanguageSwitcher locale={locale} />
+            {/* TODO: re-enable once translations are ready */}
+            {/* <LanguageSwitcher locale={locale} /> */}
           </div>
           <LinkButton href="/join" variant="primary" className="hidden text-xs md:inline-flex md:text-sm">
             {dict.nav.join}
