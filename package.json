@@ -1,6 +1,6 @@
 {
   "name": "iust-robotics",
-  "version": "0.2.2",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
