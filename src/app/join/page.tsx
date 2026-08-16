@@ -21,7 +21,12 @@ export default async function JoinPage() {
   const [departments, contactPhoneSetting] = await Promise.all([
     prisma.department.findMany({ where: { isActive: true }, orderBy: { order: "asc" } }),
     prisma.siteSetting.findUnique({ where: { key: "contact_phone" } }),
-  ]).catch(() => [[], null] as const);
+  ]).catch(
+    (): [
+      Awaited<ReturnType<typeof prisma.department.findMany>>,
+      Awaited<ReturnType<typeof prisma.siteSetting.findUnique>>,
+    ] => [[], null]
+  );
 
   return (
     <>
