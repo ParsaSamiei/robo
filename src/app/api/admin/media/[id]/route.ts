@@ -3,12 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { storage } from "@/lib/storage";
 
-function keyFromUrl(url: string) {
-  // storage.urlFor() produces "/uploads/<key>" -- strip the prefix to get
-  // back the key for storage.delete().
-  return url.replace(/^\/uploads\//, "");
-}
-
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
@@ -32,7 +26,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   await Promise.all(
     [media.storagePath, media.thumbnailPath, media.mediumPath, media.largePath]
       .filter((p): p is string => !!p)
-      .map((p) => storage.delete(keyFromUrl(p)))
+      .map((p) => storage.delete(storage.keyFromUrl(p)))
   );
 
   return NextResponse.json({ ok: true });

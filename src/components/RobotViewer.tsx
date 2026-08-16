@@ -5,17 +5,27 @@
 // scene. #61: respect prefers-reduced-motion. #63: must degrade gracefully
 // if WebGL/Three.js fails to load.
 //
-// TO USE YOUR OWN MODEL: drop a .glb file at public/models/hero-robot.glb
-// (see HERO_MODEL_PATH below to use a different path/filename). That's it —
-// no code changes needed. If the file is missing or fails to load, this
-// automatically falls back to the placeholder geometric robot instead of
-// showing an error, so it's safe to ship without a model and add one later.
+// TO USE YOUR OWN MODEL, either:
+//  1. Drop a .glb file at public/models/hero-robot.glb and redeploy -- fine
+//     for local dev, but it bloats the git repo (binary diffs on every
+//     change) and gets committed to source control.
+//  2. Upload the .glb to object storage (e.g. the same ArvanCloud bucket
+//     used for media uploads, see src/lib/storage.ts) and set
+//     NEXT_PUBLIC_HERO_MODEL_URL to its public URL. This is the better
+//     option for production/Vercel: swap the model without a redeploy, and
+//     keep large binaries out of git. The bucket/CDN must allow
+//     cross-origin GET requests (CORS) for the site's domain, since the
+//     browser fetches this file directly.
+// Either way, no code changes needed. If the file is missing or fails to
+// load, this automatically falls back to the placeholder geometric robot
+// instead of showing an error, so it's safe to ship without a model.
 import { Component, Suspense, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import type { Group, Mesh } from "three";
 
-const HERO_MODEL_PATH = "/models/hero-robot.glb";
+const HERO_MODEL_PATH =
+  process.env.NEXT_PUBLIC_HERO_MODEL_URL || "/models/hero-robot.glb";
 
 function PlaceholderRobot() {
   const group = useRef<Mesh>(null);
