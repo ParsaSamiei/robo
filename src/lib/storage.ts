@@ -38,7 +38,9 @@ export interface StorageAdapter {
 class LocalStorageAdapter implements StorageAdapter {
   private root() {
     const configured = process.env.UPLOAD_DIRECTORY ?? "./public/uploads";
-    return path.isAbsolute(configured) ? configured : path.join(process.cwd(), configured);
+    return path.isAbsolute(configured)
+      ? configured
+      : path.join(/* turbopackIgnore: true */ process.cwd(), configured);
   }
 
   private resolve(key: string) {
@@ -132,7 +134,7 @@ class ArvanStorageAdapter implements StorageAdapter {
         // photos, the hero .glb, etc) -- objects need to be publicly
         // readable without signed URLs.
         ACL: "public-read",
-      })
+      }),
     );
     return key;
   }
@@ -151,7 +153,9 @@ class ArvanStorageAdapter implements StorageAdapter {
   }
 
   keyFromUrl(url: string) {
-    return url.startsWith(this.publicBase) ? url.slice(this.publicBase.length + 1) : url;
+    return url.startsWith(this.publicBase)
+      ? url.slice(this.publicBase.length + 1)
+      : url;
   }
 }
 
