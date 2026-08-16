@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://iust:${POSTGRES_PASSWORD}@postgres:5432/iust_robotics
+      DIRECT_URL: postgresql://iust:${POSTGRES_PASSWORD}@postgres:5432/iust_robotics
+      AUTH_SECRET: ${AUTH_SECRET}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      UPLOAD_DIRECTORY: ./public/uploads
+    volumes:
+      # Docs/27 §29: media persists on a durable volume, independent of
+      # container/image lifecycle. Bind-mounted (not a named Docker volume)
+      # so Nginx on the host can also serve these files directly -- see
+      # deploy/nginx.conf's /uploads/ location block, which expects this
+      # exact host path.
+      - ./data/uploads:/app/public/uploads
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: iust
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: iust_robotics
+    volumes:
+      # Docs/27 §24: database persistence via a named volume.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iust -d iust_robotics"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

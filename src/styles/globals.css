@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens sourced from Docs/11_DESIGN_SYSTEM.md
+ * §8-10 (color palette), §74-77 (token names), §79-81 (light theme).
+ * Dark theme is the default per §7 ("the primary interface should be dark").
+ */
+:root {
+  --color-bg: #0b0f14;
+  --color-bg-secondary: #111820;
+  --color-surface: #151d26;
+  --color-surface-elevated: #1b2530;
+  --color-border: #27323d;
+
+  --color-text-primary: #f5f7fa;
+  --color-text-secondary: #b6c0ca;
+  --color-text-muted: #7e8995;
+  --color-text-faint: #56616c;
+
+  --color-accent: #d7a84b;
+  --color-accent-secondary: #6f8fa8;
+
+  /* §75: spacing scale (concrete values chosen for implementation; doc left these open) */
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.5rem;
+  --space-xl: 4rem;
+  --space-2xl: 6rem;
+  --space-3xl: 9rem;
+
+  /* §76: radius tokens; §35 says buttons use 8-10px */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+
+  --font-en: "Inter", system-ui, -apple-system, sans-serif;
+  --font-fa: "Vazirmatn", Tahoma, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* §79-81: light theme override */
+[data-theme="light"] {
+  --color-bg: #f5f6f4;
+  --color-bg-secondary: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-border: #d9dee2;
+
+  --color-text-primary: #11161b;
+  --color-text-secondary: #3a434b;
+  --color-text-muted: #59636d;
+  --color-text-faint: #889198;
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-en);
+  -webkit-font-smoothing: antialiased;
+}
+
+[dir="rtl"] body {
+  font-family: var(--font-fa);
+}
+
+/* §23: body copy should not span the full viewport */
+.prose-measure {
+  max-width: 68ch;
+}
+
+/* §95: visible focus states everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* CircuitBackground: a single "powered" via pulses gently to suggest an
+ * active board rather than a static print. Kept slow and low-amplitude
+ * per §64 motion philosophy; disabled entirely under reduced-motion below. */
+@keyframes circuit-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.circuit-pulse {
+  animation: circuit-pulse 3.2s ease-in-out infinite;
+}
+
+/* §66: staggered/scroll animation helper, kept subtle per §64 motion philosophy */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
